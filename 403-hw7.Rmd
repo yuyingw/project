@@ -1,0 +1,123 @@
+---
+title: "403-HW7"
+author: "Yuying Wang"
+date: "5/17/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1
+(a) The fitted coefficients are -0.24,-0.207,0.223,-.524 correspondingly for intercept, sepal length, sepal width and petal length.
+```{r}
+set.seed(1)
+x=iris
+B=10000
+fit=lm(Petal.Width~Sepal.Length+Sepal.Width+Petal.Length,data=x)
+fit$coefficients
+```
+(b)
+```{r}
+fit_coeff = fit$coefficients
+n = nrow(x)
+coeff_BT = matrix(NA, nrow=B, ncol=4)
+y_predict = predict(fit)
+coeff_BT_res = matrix(NA, nrow=B, ncol=4)
+y_bt = predict(fit)+rnorm(n,sd=sd(fit$residuals)) 
+coeff_BT_wild = matrix(NA, nrow=B, ncol=4)
+
+for(i_BT in 1:B){
+  ## empirical
+  w = sample(n,n,replace=T)
+  x_BT = x[w,]
+  fit_BT = lm(Petal.Width~Sepal.Length+Sepal.Width+Petal.Length,data=x_BT)
+  coeff_BT[i_BT,] = fit_BT$coefficients
+  
+  ## residual
+  w = sample(n,n,replace=T)
+  y_bt = y_predict+fit$residuals[w]
+  x_BT = data.frame(Sepal.Length=x$Sepal.Length,Sepal.Width=x$Sepal.Width,Petal.Length=x$Petal.Length,Petal.Width=y_bt)
+  fit_BT = lm(Petal.Width~Sepal.Length+Sepal.Width+Petal.Length, data=x_BT)
+  coeff_BT_res[i_BT,] = fit_BT$coefficients
+
+  ## wild
+  w = sample(n,n,replace=T)
+  y_bt = y_predict+fit$residuals*rnorm(n)
+  x_BT = data.frame(Sepal.Length=x$Sepal.Length,Sepal.Width=x$Sepal.Width,Petal.Length=x$Petal.Length,Petal.Width=y_bt)
+  fit_BT = lm(Petal.Width~Sepal.Length+Sepal.Width+Petal.Length, data=x_BT)
+  coeff_BT_wild[i_BT,] = fit_BT$coefficients
+}
+  ## compare
+compare = cbind(diag(var(coeff_BT)),diag(var(coeff_BT_res)),diag(var(coeff_BT_wild)))
+colnames(compare) = c("Empirical","Residual","Wild")
+rownames(compare)=c("Intercept","Sepal.Length","Sepal.Width","Petal.Length")
+compare
+```
+(c)
+\hfill\break
+```{r}
+boxplot(coeff_BT[,1],coeff_BT_res[,1],coeff_BT_wild[,1],col=c(2,3,4),names=c('empirical','residual','wild'),main='distribution of intercept')
+```
+
+## Problem 2
+
+(a) CI:(0.2366,1.3086)
+
+```{r}
+setwd("/Users/yuyingwang/Desktop/Stat403/hw")
+D=read.csv('binary.csv')
+data3=D[,1:3]
+fit_logistic = glm(admit ~ gre+gpa, data=data3, family = "binomial")
+fit_coeff = fit_logistic$coefficients
+n = nrow(data3)
+coeff_BT_logistic = matrix(NA, nrow=B, ncol=3)
+for(i_BT in 1:B){
+  y_bt = rbinom(n, size=1, prob = predict(fit_logistic,type="response"))
+  data3_BT = data.frame(admit = y_bt,gpa=data3$gpa,gre=data3$gre)
+  fit_BT = glm(admit ~ gre+gpa, data=data3_BT, 
+               family = "binomial")
+  coeff_BT_logistic[i_BT,] = fit_BT$coefficients
+}
+colnames(coeff_BT_logistic) = c("Intercept","gre","gpa")
+quantile(coeff_BT_logistic[,'gpa'],c(0.05,0.95))
+```
+(b)
+```{r}
+## empirical
+n = nrow(data3)
+coeff_BT_emp = matrix(NA, nrow=B, ncol=3)
+for(i_BT in 1:B){
+  w = sample(n,n,replace = T)
+  data3_BT = data3[w,]
+  fit_BT2 = glm(admit ~ gre+gpa, data=data3_BT, 
+               family = "binomial")
+  coeff_BT_emp[i_BT,] = fit_BT2$coefficients
+}
+compare2 = cbind(summary(fit_logistic)$coeff[,2],summary(fit_BT)$coeff[,2],summary(fit_BT2)$coeff[,2])
+colnames(compare2) = c("summary","Parametric","Empirical")
+compare2
+```
+(c) 90% CI for $\lambda$: (0.2407,0.3766)
+\hfill\break
+```{r}
+logistic = function(x){
+  return(exp(x)/(1+exp(x)))
+}
+predict_value_BT = coeff_BT_logistic[,1]+coeff_BT_logistic[,2]*500+ coeff_BT_logistic[,3]*3.7
+lambda_BT = logistic(predict_value_BT)
+quantile(lambda_BT, c(0.05,0.95))
+```
+(d) 90% confidence level does not contain 0, so we can reject the null hypothesis that they will have the same probability of receiving an admission.
+\hfill\break
+```{r}
+predict_value_BT = coeff_BT_logistic[,1]+coeff_BT_logistic[,2]*670+coeff_BT_logistic[,3]*3.7
+p1 = logistic(predict_value_BT)
+predict_value_BT = coeff_BT_logistic[,1]+coeff_BT_logistic[,2]*700+coeff_BT_logistic[,3]*2.3
+p2 = logistic(predict_value_BT)
+diff = p1-p2
+quantile(diff, c(0.05,0.95))
+```
+

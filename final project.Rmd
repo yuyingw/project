@@ -1,0 +1,150 @@
+---
+output:
+  html_document:
+    df_print: paged
+---
+## Data Preparation
+```{r message=FALSE}
+library("tidyverse")
+ted=read_csv("ted.csv")
+small_ted = drop_na(ted) %>% select(published_date,comments,views,title,tags) %>% filter(views >200000)                                        ## clean NAs
+library(anytime)
+y=anydate(small_ted$published_date)   ## recode a variable
+num_var=as.numeric(substring(y,1,4))  ## create a character variable + create a numeric variable
+small_ted = small_ted %>% mutate(published_date=num_var)
+colnames(small_ted)[1] = 'published_year'
+tags_sep=gsub("\\[|\\]|(\'+)",'',small_ted$tags)   ## clean text data
+tags_cleaned=sort(table(unlist(strsplit(tags_sep,'[, ]+'))), decreasing = TRUE)
+TAG=as.data.frame(tags_cleaned)
+```  
+Matching TOP 10 views and comments
+```{r}
+merge(arrange(small_ted,desc(views)) %>% top_n(10,views) %>% select(title, views), arrange(small_ted,desc(comments)) %>% top_n(10,comments) %>% select(title, comments) )
+```
+
+Plot 1:  
+```{r message=FALSE}
+library(scales)
+ggplot(data=small_ted,aes(views,comments)) +
+  geom_smooth(method="glm")+
+  geom_point(size=1.5,shape=1,alpha=0.5)+
+  scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x)))+
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x)))+
+  ggtitle('Linear relationship between views and comments')+
+  facet_wrap(~published_year, ncol = 4)+
+  theme_bw()+
+  theme(strip.background = element_blank(),panel.grid.major = element_blank(),panel.grid.minor = element_blank())
+```
+
+plot 2
+```{r}
+byyr=small_ted %>% group_by(published_year) %>% summarise(c_mean=mean(comments),v_mean=mean(views))
+ggplot(byyr, aes(published_year)) + 
+  geom_line(aes(y = c_mean, col = 'red')) + 
+  geom_point(aes(y = c_mean, col = 'red'),shape=0) + 
+  geom_text(aes(y = c_mean, label=round(c_mean)),vjust=-0.5,size=3)+
+  geom_line(aes(y = v_mean, col = 'blue'))+
+  geom_point(aes(y = v_mean, col = 'blue'),shape=1) +
+  geom_text(aes(y = v_mean, label=round(v_mean)),vjust=-0.8,size=2.4)+
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x)))+
+  scale_x_discrete(limits=seq(2006,2017))+
+  theme_bw()+
+  ggtitle("Change in average comments and average views from 2006 to 2017") +
+  xlab(NULL)+
+  ylab("Average Value")+
+  scale_color_hue(labels=c("Avg Views","Ave Comments"),name=NULL)+
+  theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),legend.position = c(0.9, 0.5))
+```
+<br />
+plot 3:  
+<br />
+```{r message=FALSE}
+ggplot(TAG[1:10,], aes(TAG[1:10,]$Var1,y = TAG[1:10,]$Freq))+
+  ylim(0,800)+
+  #geom_col(fill="white",col="black")+
+  geom_col(fill="lightblue", colour="darkblue")+
+  geom_text(aes(label=round(TAG[1:10,]$Freq/2513,2)), vjust=-0.5,size=4)+
+  xlab("Topic") +
+  ylab("Counts") + 
+  ggtitle("Top 10 popular topics from 2006 to 2017") + 
+  theme_bw()+
+  theme(axis.text = element_text(size = 10.5),panel.grid.major = element_blank(),panel.grid.minor = element_blank())
+```
+<br />
+plot 4
+<br />
+```{r appendix 1,echo=FALSE, message=FALSE}
+top10=TAG[1:10,1]
+{small_ted06 = small_ted %>% filter(published_year==2006)
+TAG06=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted06$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG06)[2] <- "2006"
+small_ted07 = small_ted %>% filter(published_year==2007)
+TAG07=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted07$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG07)[2] <- "2007"
+small_ted08 = small_ted %>% filter(published_year==2008)
+TAG08=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted08$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG08)[2] <- "2008"
+small_ted09 = small_ted %>% filter(published_year==2009)
+TAG09=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted09$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG09)[2] <- "2009"
+small_ted10 = small_ted %>% filter(published_year==2010)
+TAG10=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted10$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG10)[2] <- "2010"
+small_ted11 = small_ted %>% filter(published_year==2011)
+TAG11=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted11$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG11)[2] <- "2011"
+small_ted12 = small_ted %>% filter(published_year==2012)
+TAG12=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted12$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG12)[2] <- "2012"
+small_ted13 = small_ted %>% filter(published_year==2013)
+TAG13=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted13$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG13)[2] <- "2013"
+small_ted14 = small_ted %>% filter(published_year==2014)
+TAG14=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted14$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG14)[2] <- "2014"
+small_ted15 = small_ted %>% filter(published_year==2015)
+TAG15=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted15$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG15)[2] <- "2015"
+small_ted16 = small_ted %>% filter(published_year==2016)
+TAG16=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted16$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG16)[2] <- "2016"
+small_ted17 = small_ted %>% filter(published_year==2017)
+TAG17=as.data.frame(sort(table(unlist(strsplit(gsub("\\[|\\]|(\'+)",'',small_ted17$tags),'[, ]+'))), decreasing = TRUE))
+colnames(TAG17)[2] <- "2017"
+}
+compare=Reduce(function(x, y) merge(x, y, by = "Var1",all=TRUE), list(TAG06, TAG07,TAG08,TAG09,TAG10,TAG11,TAG12,TAG13,TAG14,TAG15,TAG16,TAG17))
+compare=compare %>% filter(Var1 %in% top10) %>% mutate(`2006`=`2006`/50,`2007`=round(`2007`/122,2),`2008`=round(`2008`/nrow(small_ted08),2),`2009`=round(`2009`/nrow(small_ted09),2),`2010`=round(`2010`/nrow(small_ted10),2),`2011`=round(`2011`/nrow(small_ted11),2),`2012`=round(`2012`/nrow(small_ted12),2),`2013`=round(`2013`/nrow(small_ted13),2),`2014`=round(`2014`/nrow(small_ted14),2),`2015`=round(`2015`/nrow(small_ted15),2),`2016`=round(`2016`/nrow(small_ted16),2),`2017`=round(`2017`/nrow(small_ted17),2))
+
+library("reshape")
+melted=melt(compare)
+ggplot(melted %>% filter (variable %in% c("2013","2017")), aes(Var1,value, col=variable)) + 
+  geom_point() + 
+  geom_path(aes(group=variable)) +
+  geom_text(aes(label=value), vjust=-0.5,size=3,col="black")+
+  xlab(NULL)+
+  ylab("Frequency") +
+  ylim(0,0.5)+
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),legend.position = c(0.25, 0.15),axis.text=element_text(size=10))+
+  scale_color_discrete("Year")+
+  ggtitle("Distribution of topics comparing 2013 to 2017") 
+ggplot(melted[1:20,], aes(Var1,value, col=variable)) + 
+  geom_point() + 
+  geom_path(aes(group=variable)) +
+  geom_text(aes(label=value), vjust=-0.5,size=3,col="black")+
+  xlab(NULL)+
+  ylab("Frequency") +
+  ylim(0,0.5)+
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),legend.position = c(0.25, 0.15),axis.text=element_text(size=10))+
+  scale_color_discrete("Year")+
+  ggtitle("Distribution of topics comparing 2006 to 2007") 
+```
+
+#### Appendix
+#####Plot 4
+```{r, ref.label = "appendix 1", eval=FALSE}
+```
